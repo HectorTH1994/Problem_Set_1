@@ -14,7 +14,7 @@ Carlos David Vergara Díaz -
 Código de Estudiante No. 201414896
 
 Alexandra Rizo - 
-Código de Estudiante No. 
+Código de Estudiante No. 202210094
 
 Danna - 
 Código de Estudiante No. 

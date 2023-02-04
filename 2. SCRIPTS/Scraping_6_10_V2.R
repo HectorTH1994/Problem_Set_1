@@ -21,3 +21,4 @@ view(data)
 data1<-(data)[-1]
 
 data2 <- as_tibble(data1)
+saveRDS(data2, file = "data2,rds")

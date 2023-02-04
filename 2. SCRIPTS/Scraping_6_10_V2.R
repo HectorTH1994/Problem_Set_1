@@ -18,4 +18,6 @@ for (i in 6:10) {
 }
 view(data)
 
-#Para modificar la tabla de datos, se agrega nombre la primera columna: 
+data1<-(data)[-1]
+
+data2 <- as_tibble(data1)

@@ -1,0 +1,168 @@
+#Scraping de los datos
+## Datos de Chunks 6-10
+### Carlos, Danna, Héctor, Alexa
+#Se prepara el espacio por medio del llamado a los paquetes y librerías: 
+library(pacman)
+p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets", "skimr","gridExtra")
+library(data.table)
+
+
+#Se realiza el scraping de los Chunks 6 a 10: 
+url <- "https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_"
+data <- data.frame()
+for (i in 1:10) {
+  url_i <- paste0(url, i, ".html")
+  tablas <- url_i %>%
+    read_html() %>%
+    html_table() %>% .[[1]]
+  data <- rbind.data.frame(data, tablas)
+}
+
+#Eliminamos la primera columna, la cual es de indices y no se requiere
+data<-(data)[-1]
+
+#Se transforma a tipo Tibble para un mejor análisis
+Base_datos_final <- as_tibble(data)
+
+#TENGO DUDA SI ESTO VA AQUI, DADO QUE NO SE NECESITA EXPORTAR LA BASE DE DATOS
+saveRDS(Base_datos_final, file = "Base_datos_final.rds")
+
+#####################################
+###Limpieza de datos#################
+#####################################
+
+
+
+##De este primer analisis se concluye que existe cero faltantes en edad, por lo cual el primero paso es seleccionar
+## que la muestra sea mayor o igual a 18 años.
+
+df<-(data %>%
+          filter(age >= 18))
+
+
+##Revisamos los datos faltantes para cada columna
+
+max(colSums(is.na(df)))
+colSums(is.na(df))
+
+#Dado que gran existe muchos datos faltantes, vemos cuantas y cuales columnas tiene mayor numero de faltantes
+length(which(colSums(is.na(df)) > 10000))
+
+
+#Calculamos el porcentaje de los datos diferentes de NA
+sum(df$y_ingLab_m_ha > 0 & !is.na(df$y_ingLab_m_ha) )/length(df$y_ingLab_m_ha)
+
+#quitmos los NA
+df <- df[!is.na(df$y_ingLab_m_ha), ]
+
+##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
+
+ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "blue", color = "black") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+#Se observa un alto numero de valores atipicos, por lo cual los eliminaremos
+#se procede a eliminar los valores de salarios que superen  la media +/- 1.5 veces la desviación 
+#Valores atípicos = Observaciones> Q3 + 1.5 * IQR
+
+limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
+
+#Contamos los valores atipicos
+
+df = df %>% 
+  mutate(y_ingLab_m_ha_out = ifelse(test = y_ingLab_m_ha > limite_punto1, 
+                                    yes = 1, 
+                                    no = 0))
+table(df_p$y_ingLab_m_ha_out)
+
+df_sin_atipicos<-(df %>%
+            filter(y_ingLab_m_ha <= limite_punto1))
+
+##graficamos nuevamente el diagrama de cajas
+
+ggplot(df_sin_atipicos, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "blue", color = "black") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+######################################################################
+###############PUNTO 1#############################################
+##################################################################
+
+df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age")])
+df_anes$age_cuadrado <- df_anes$age^2
+
+
+str(df_anes)
+skim(df_anes) %>% head()
+
+##Calculamos la matriz de correlaciones
+
+corr_matrix <- cor(df_anes)
+
+
+##Graficamos la matriz de correlaciones
+ggplot(melt(corr_matrix), aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1))
+
+##Histograma de las edades y de los salarios
+# dividmos el gráfico en dos paneles
+
+# histograma ingresos
+p1 <- ggplot(df_anes, aes(x = y_ingLab_m_ha)) +
+  geom_histogram(fill = "blue", color = "black") +
+  ggtitle("Histograma de ingresos por hora") +
+  labs(x = "Ingresos por hora", y = "Eventos")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+# histograma ingresos anes
+p2 <- ggplot(df_anes, aes(x = age)) +
+  geom_histogram(fill = "red", color = "black") +
+  ggtitle("Histograma de edades") +
+  labs(x = "Edad", y = "Eventos")+
+  theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(p1, p2, ncol = 2)
+
+
+  
+
+
+##Grafica de dispersion
+
+ggplot(df_anes, aes(x = age, y = y_ingLab_m_ha)) +
+  geom_point(color = "red", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  theme_classic() +
+  labs(x = "Edad", y = "Salario por hora",
+       title = "Gráfico de dispersión edad vs salarios",
+       caption = "Datos de ejemplo")
+
+#Observamos si hay atipicos en los anes
+
+diag_cajas_1 <- ggplot(df_anes, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "blue", color = "black") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+diag_cajas_2 <- ggplot(df_anes, aes(x = "edad", y = age)) +
+  geom_boxplot(fill = "red", color = "black") +
+  ggtitle("Diagrama de Cajas de edades") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(diag_cajas_1, diag_cajas_2, ncol = 2)
+
+
+##########MODELO PUNTO 1 #############
+
+mod <- lm(y_ingLab_m_ha ~ ., data = df_anes, x = TRUE)
+mod2 <- lm(y_ingLab_m_ha ~ age_cuadrado, data = df_anes, x = TRUE)
+mod3 <- lm(y_ingLab_m_ha ~ age, df)
+stargazer(mod3, type="text")
+
+
+

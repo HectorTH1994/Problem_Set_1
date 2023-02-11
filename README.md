@@ -22,7 +22,7 @@ Código de Estudiante No. 201911675
 Héctor David Tacuan - 
 Código de Estudiante No. 202225884
 
-Fecha de entrega: febrero de 2023. 
+Fecha de entrega: 12 de febrero de 2023. 
 
 # Contenido del repositorio
 

@@ -3,7 +3,7 @@
 ### Carlos, Danna, H√©ctor, Alexa
 #Se prepara el espacio por medio del llamado a los paquetes y librer√≠as: 
 library(pacman)
-p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych")
+p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics")
 library(data.table)
 
 
@@ -37,7 +37,9 @@ saveRDS(Base_datos_final, file = "Base_datos_final.rds")
 ## que la muestra sea mayor o igual a 18 a√±os.
 
 df<-(data %>%
-          filter(age >= 18))
+       filter(age >= 18, dsi == 0))
+
+
 
 
 ##Revisamos los datos faltantes para cada columna
@@ -54,6 +56,7 @@ sum(df$y_ingLab_m_ha > 0 & !is.na(df$y_ingLab_m_ha) )/length(df$y_ingLab_m_ha)
 
 #quitmos los NA
 df <- df[!is.na(df$y_ingLab_m_ha), ]
+
 
 ##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
 ##Grafica de dispersion
@@ -85,14 +88,9 @@ limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
 
 #Contamos los valores atipicos
 
-df = df %>% 
-  mutate(y_ingLab_m_ha_out = ifelse(test = y_ingLab_m_ha > limite_punto1, 
-                                    yes = 1, 
-                                    no = 0))
-table(df_p$y_ingLab_m_ha_out)
 
 df_sin_atipicos<-(df %>%
-            filter(y_ingLab_m_ha <= limite_punto1))
+                    filter(y_ingLab_m_ha <= limite_punto1))
 
 histograma_salarios_sin_at <- ggplot(df_sin_atipicos, aes(x = y_ingLab_m_ha)) +
   geom_histogram(fill = "blue", color = "black") +
@@ -109,19 +107,15 @@ boxplot_salarios_sin_at <- ggplot(df_sin_atipicos, aes(x = "Salarios", y = y_ing
 grid.arrange(histograma_salarios_sin_at, boxplot_salarios_sin_at, ncol = 2)
 
 
-##graficamos nuevamente el diagrama de cajas
-
-ggplot(df_sin_atipicos, aes(x = "Salarios", y = y_ingLab_m_ha)) +
-  geom_boxplot(fill = "blue", color = "black") +
-  ggtitle("Diagrama de Cajas de salario por hora") +
-  theme(plot.title = element_text(hjust = 0.5))
 
 ######################################################################
 ###############PUNTO 1#############################################
 ##################################################################
 
+
 df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age")])
 df_anes$age_cuadrado <- df_anes$age^2
+df$age_cuadrado <- df$age^2
 
 
 str(df_anes)
@@ -129,37 +123,21 @@ skim(df_anes) %>% head()
 
 ##Calculamos la matriz de correlaciones
 
-corr_matrix <- cor(df_anes)
+pairs.panels(df_anes,
+             smooth = TRUE,      # Si TRUE, dibuja ajuste suavizados de tipo loess
+             scale = FALSE,      # Si TRUE, escala la fuente al grado de correlaciÛn
+             density = TRUE,     # Si TRUE, aÒade histogramas y curvas de densidad
+             ellipses = TRUE,    # Si TRUE, dibuja elipses
+             method = "pearson", # MÈtodo de correlaciÛn (tambiÈn "spearman" o "kendall")
+             pch = 21,           # SÌmbolo pch
+             lm = FALSE,         # Si TRUE, dibuja un ajuste lineal en lugar de un ajuste LOESS
+             cor = TRUE,         # Si TRUE, agrega correlaciones
+             jiggle = FALSE,     # Si TRUE, se aÒade ruido a los datos
+             factor = 2,         # Nivel de ruido aÒadido a los datos
+             hist.col = 4,       # Color de los histogramas
+             stars = TRUE,       # Si TRUE, agrega el nivel de significaciÛn con estrellas
+             ci = TRUE)          # Si TRUE, aÒade intervalos de confianza a los ajustes
 
-
-##Graficamos la matriz de correlaciones
-ggplot(melt(corr_matrix), aes(x = Var1, y = Var2, fill = value)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                       midpoint = 0, limit = c(-1,1), space = "Lab") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1))
-
-##Histograma de las edades y de los salarios
-# dividmos el gr√°fico en dos paneles
-
-# histograma ingresos
-p1 <- ggplot(df_anes, aes(x = y_ingLab_m_ha)) +
-  geom_histogram(fill = "blue", color = "black") +
-  ggtitle("Histograma de ingresos por hora") +
-  labs(x = "Ingresos por hora", y = "Eventos")+
-  theme(plot.title = element_text(hjust = 0.5))
-
-# histograma ingresos anes
-p2 <- ggplot(df_anes, aes(x = age)) +
-  geom_histogram(fill = "red", color = "black") +
-  ggtitle("Histograma de edades") +
-  labs(x = "Edad", y = "Eventos")+
-  theme(plot.title = element_text(hjust = 0.5))
-grid.arrange(p1, p2, ncol = 2)
-
-
-  
 
 
 ##Grafica de dispersion
@@ -169,30 +147,88 @@ ggplot(df_anes, aes(x = age, y = y_ingLab_m_ha)) +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   theme_classic() +
   labs(x = "Edad", y = "Salario por hora",
-       title = "Gr√°fico de dispersi√≥n edad vs salarios",
+       title = "Grafico de dispersiÛn edad vs salarios",
        caption = "Datos de ejemplo")
 
-#Observamos si hay atipicos en los anes
+#Observamos si hay atipicos en los aÒos
 
-diag_cajas_1 <- ggplot(df_anes, aes(x = "Salarios", y = y_ingLab_m_ha)) +
-  geom_boxplot(fill = "blue", color = "black") +
-  ggtitle("Diagrama de Cajas de salario por hora") +
+# histograma edad
+histograma_edad <- ggplot(df_anes, aes(x = age)) +
+  geom_histogram(fill = "blue", color = "black") +
+  ggtitle("Histograma de edades") +
+  labs(x = "Edades", y = "Eventos")+
   theme(plot.title = element_text(hjust = 0.5))
 
-diag_cajas_2 <- ggplot(df_anes, aes(x = "edad", y = age)) +
+diag_cajas_edad <- ggplot(df_anes, aes(x = "", y = age)) +
   geom_boxplot(fill = "red", color = "black") +
   ggtitle("Diagrama de Cajas de edades") +
+  labs(x = "", y = "Edades")+
   theme(plot.title = element_text(hjust = 0.5))
 
-grid.arrange(diag_cajas_1, diag_cajas_2, ncol = 2)
+grid.arrange(histograma_edad, diag_cajas_edad, ncol = 2)
 
+stargazer(summary(df_anes), type="latex")
 
 ##########MODELO PUNTO 1 #############
 
-mod <- lm(y_ingLab_m_ha ~ ., data = df_anes, x = TRUE)
-mod2 <- lm(y_ingLab_m_ha ~ age_cuadrado, data = df_anes, x = TRUE)
-mod3 <- lm(y_ingLab_m_ha ~ age, df)
-stargazer(mod3, type="text")
+fit_sin_atipicos_p3<- lm(y_ingLab_m_ha ~ ., data = df_anes, x = TRUE)
+fit_con_atipicos_p3<- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df, x = TRUE)
+stargazer(fit_sin_atipicos_p3,fit_con_atipicos_p3, type="latex")
+
+##Agregamos una columna con los predictores
+df_anes$salario_hat = predict(fit_sin_atipicos_p3)
+df$salario_hat_age = predict(fit_con_atipicos_p3)
 
 
+# plot predicted values
+summ = df_anes %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(y_ingLab_m_ha),
+    yhat_reg = mean(salario_hat), .groups="drop"
+  ) 
+
+ggplot(summ) + 
+  geom_point(
+    aes(x = age, y = mean_y),
+    color = "blue", size = 2
+  ) + 
+  geom_line(
+    aes(x = age, y = yhat_reg), 
+    color = "green", size = 1.5
+  ) + 
+  labs(
+    title = "Salarios usando como predictor la edad y sin atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  ) +
+  theme_bw()
+
+
+summ = df %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(y_ingLab_m_ha),
+    yhat_reg = mean(salario_hat_age), .groups="drop"
+  ) 
+
+ggplot(summ) + 
+  geom_point(
+    aes(x = age, y = mean_y),
+    color = "blue", size = 2
+  ) + 
+  geom_line(
+    aes(x = age, y = yhat_reg), 
+    color = "green", size = 1.5
+  ) + 
+  labs(
+    title = "Salarios usando como predictor la edad y con atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  ) +
+  theme_bw()
 

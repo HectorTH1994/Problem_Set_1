@@ -19,8 +19,8 @@ Código de Estudiante No. 202210094
 Danna Camila Bolaños Nuñez- 
 Código de Estudiante No. 201911675
 
-Héctor - 
-Código de Estudiante No. 
+Héctor David Tacuan - 
+Código de Estudiante No. 202225884
 
 Fecha de entrega: febrero de 2023. 
 

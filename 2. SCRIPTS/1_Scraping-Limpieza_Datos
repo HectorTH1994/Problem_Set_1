@@ -1,6 +1,7 @@
 #Scraping de los datos
 ## Datos de Chunks 6-10
 ### Carlos, Danna, Héctor, Alexa
+-------------------------------------------------------------------------------------------------------
 #Se prepara el espacio por medio del llamado a los paquetes y librerías: 
 library(pacman)
 p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets", "skimr","gridExtra")

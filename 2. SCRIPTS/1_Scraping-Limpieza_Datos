@@ -58,6 +58,7 @@ df <- df[!is.na(df$y_ingLab_m_ha), ]
 
 saveRDS(df, file = "df.rds")
 
+
 ##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
 
 ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +

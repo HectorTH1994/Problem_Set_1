@@ -7,7 +7,7 @@ p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","
 library(data.table)
 
 
-#Se realiza el scraping de los Chunks 6 a 10: 
+#Se realiza el scraping de los Chunks 1 a 10: 
 url <- "https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_"
 data <- data.frame()
 for (i in 1:10) {

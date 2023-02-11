@@ -3,7 +3,7 @@
 ### Carlos, Danna, Héctor, Alexa
 #Se prepara el espacio por medio del llamado a los paquetes y librerías: 
 library(pacman)
-p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets", "skimr","gridExtra")
+p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych")
 library(data.table)
 
 
@@ -56,17 +56,32 @@ sum(df$y_ingLab_m_ha > 0 & !is.na(df$y_ingLab_m_ha) )/length(df$y_ingLab_m_ha)
 df <- df[!is.na(df$y_ingLab_m_ha), ]
 
 ##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
+##Grafica de dispersion
 
-ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
-  geom_boxplot(fill = "blue", color = "black") +
-  ggtitle("Diagrama de Cajas de salario por hora") +
+
+histograma_salarios <- ggplot(df, aes(x = y_ingLab_m_ha)) +
+  geom_histogram(fill = "blue", color = "black") +
+  ggtitle("Histograma de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
   theme(plot.title = element_text(hjust = 0.5))
+
+boxplot_salarios <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "red", color = "black") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histograma_salarios, boxplot_salarios, ncol = 2)
+
+stargazer(summary(df$y_ingLab_m_ha), type="latex")
+
 
 #Se observa un alto numero de valores atipicos, por lo cual los eliminaremos
 #se procede a eliminar los valores de salarios que superen  la media +/- 1.5 veces la desviación 
 #Valores atípicos = Observaciones> Q3 + 1.5 * IQR
 
 limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
+
 
 #Contamos los valores atipicos
 
@@ -78,6 +93,21 @@ table(df_p$y_ingLab_m_ha_out)
 
 df_sin_atipicos<-(df %>%
             filter(y_ingLab_m_ha <= limite_punto1))
+
+histograma_salarios_sin_at <- ggplot(df_sin_atipicos, aes(x = y_ingLab_m_ha)) +
+  geom_histogram(fill = "blue", color = "black") +
+  ggtitle("Histograma de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+boxplot_salarios_sin_at <- ggplot(df_sin_atipicos, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "red", color = "black") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histograma_salarios_sin_at, boxplot_salarios_sin_at, ncol = 2)
+
 
 ##graficamos nuevamente el diagrama de cajas
 

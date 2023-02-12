@@ -198,5 +198,4 @@ for (i in 1:1000) {
   
 }
 
-
 ################ Punto No. 5 - Predicting earnings #####################

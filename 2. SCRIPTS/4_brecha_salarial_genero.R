@@ -55,10 +55,9 @@ stargazer(red_df_sin_a, type="text", digits=7)
 # 3- Salaior igualitario para trabajos iguales: 
 ## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
-#####Punto 4
-
-
-####Punto a
+df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age", "sex", "maxEducLevel")])
+df_anes$age_cuadrado <- df_anes$age^2
+View(df_anes)
 
 modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
                   data = df_anes)

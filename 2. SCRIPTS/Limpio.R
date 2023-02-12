@@ -3,7 +3,7 @@
 ### Carlos, Danna, HÃ©ctor, Alexa
 #Se prepara el espacio por medio del llamado a los paquetes y librerÃ­as: 
 library(pacman)
-p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics","boot")
+p_load("tidyverse","rvest","MASS","glmnet","writexl","caret","RMSE","MLmetrics","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics","boot")
 library(data.table)
 
 
@@ -238,15 +238,17 @@ ggplot(summ) +
 ###############################################################
 #################BOOTSTRAP#####################################
 ###############################################################
-# Define la función que se usará para el bootstrap
+
+# Define la función del bootstrap, la edad mayor es 86 años
 boot_prediccion <- function(df_anes, indices) {
-  modelo_boot <- lm(y_ingLab_m_ha ~ ., data = df_anes[indices,])
-  prediccion <- predict(modelo_boot, newdata = tibble(x = 86))[1]
+  modelo_boot <- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df_anes[indices,])
+  prediccion <- predict(modelo_boot, newdata = tibble(age = 86, age_cuadrado=86**2))[1]
   return(prediccion)
 }
 
 # Realiza el bootstrap
-resultados_boot <- boot(df_anes, boot_prediccion, R = 100000)
+set.seed(112)
+resultados_boot <- boot(df_anes, boot_prediccion, R = 20000)
 
 # Calcula los percentiles para construir el intervalo de confianza
 alpha <- 0.05
@@ -254,8 +256,228 @@ limite_inferior <- quantile(resultados_boot$t, probs = alpha / 2)
 limite_superior <- quantile(resultados_boot$t, probs = 1 - alpha / 2)
 
 # Muestra el intervalo de confianza
-cat("El intervalo de confianza al", 100 * (1 - alpha), "% para X = 1.5 es: [", limite_inferior, ",", limite_superior, "]")
+cat("El intervalo de confianza al 95% para edad = 86 es: [", limite_inferior, ",", limite_superior, "]")
 
 #########################################################################
-DSADSA
 
+#################PUNTO 5###################
+####CREAMOS DATAFRAME
+
+df_5 <- df[c("y_ingLab_m_ha", "age", "p6210s1", "totalHoursWorked", "sizeFirm", "oficio","estrato1","sex","maxEducLevel")]
+df_5 <- df_5[!is.na(df$maxEducLevel), ]
+df_5 = rename(df_5, c(salario="y_ingLab_m_ha", edad="age", gr_escolaridad_ap = "p6210s1", horas_trabajadas_s="totalHoursWorked", tamano_firma="sizeFirm",sexo="sex",max_nivel_edu="maxEducLevel"))
+df_5$edad_cuadrado <- df_5$edad^2
+
+######variables categoricas##########
+
+# Definimos las variables categoricas
+variables_categoricas <- c("estrato1", "sexo","max_nivel_edu","sizeFirm")
+
+for (v in variables_categoricas) {
+  df_5[, v] <- as.factor(df_5[, v, drop = T])
+}
+
+str(df_5)
+
+###Verificamos que no hayan na####
+
+sum(is.na(df_5))
+
+##Dividimos los datos
+
+set.seed(1121)
+sample <- sample(c(TRUE, FALSE), nrow(df_5), replace=TRUE, prob=c(0.7,0.3))
+sum(sample)/nrow(df_5)
+
+train  <- df_5[sample, ] #train sample those that are TRUE in the sample index
+test   <- df_5[!sample, ] #test sample those that are FALSE in the sample index
+
+
+# Convertimos salario y en log
+y_train <- log(train[,"salario"])
+X_train <- select(train, -salario)
+y_test <- log(test[,"salario"])
+X_test <- select(test, -salario)
+
+#########Se realiza los histogramas
+
+histograma_train <- ggplot(train, aes(x = salario)) +
+  geom_histogram(fill = "#E6F1FF", color = "#4C5FA9") +
+  ggtitle("TRAIN") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+histograma_test <- ggplot(test, aes(x = salario)) +
+  geom_histogram(fill = "#E0F2E6", color = "#45958C") +
+  ggtitle("TEST") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histograma_train, histograma_test, ncol = 2)
+#########CAJAS DE TEST Y TRAIN#################
+
+
+caja_train <- ggplot(train, aes(x = log(salario))) +
+  geom_boxplot(fill = "#E6F1FF", color = "#4C5FA9") +
+  ggtitle("TRAIN") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+caja_test <- ggplot(test, aes(x = log(salario))) +
+  geom_boxplot(fill = "#E0F2E6", color = "#45958C") +
+  ggtitle("TEST") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(caja_train, caja_test, ncol = 2)
+
+########## Estudiemos la relación entre el puntaje zscore con la desnutrición########
+ggplot(train, aes(x = edad, y = salario, 
+               color = estrato1)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Edad", y = "Salario [COP]") +
+  scale_color_discrete(name = "Estrato socieconomico") +
+  theme(legend.position="bottom")
+
+###NO TIENE SENTIDO QUE EL VALOR MAXIMO EN SALARIOS SEA UNA PERSONA ESTRATO 4
+
+
+# Si no se especifica valor de lambda, se selecciona un rango automático.
+
+
+mod_completo <- lm(log(salario) ~ ., train)
+mod_edad <- lm (log(salario)~edad+edad_cuadrado, train)
+mod_sexo <- lm (log(salario)~sexo, train)
+mod_sexo_completo<- lm (log(salario)~sexo+max_nivel_edu+edad+edad_cuadrado, train)
+
+
+# Evaluamos el modelo completo
+y_hat_in1_com <- predict(mod_completo, newdata = X_train)
+y_hat_out1_com <- predict(mod_completo, newdata = X_test)
+
+# Evaluamos el modelo edad
+y_hat_in1_edad <- predict(mod_edad, newdata = X_train)
+y_hat_out1_edad <- predict(mod_edad, newdata = X_test)
+
+# Evaluamos el modelo sexo
+y_hat_in1_sexo <- predict(mod_sexo, newdata = X_train)
+y_hat_out1_sexo <- predict(mod_sexo, newdata = X_test)
+
+# Evaluamos el modelo sexo completo
+y_hat_in1_sexo_com <- predict(mod_sexo_completo, newdata = X_train)
+y_hat_out1_sexo_com <- predict(mod_sexo_completo, newdata = X_test)
+
+
+
+
+
+# Métricas dentro y fuera completo
+r2_in1_com <- R2_Score(y_pred = exp(y_hat_in1_com), y_true = y_train$salario)
+rmse_in1_com <- RMSE(y_pred = exp(y_hat_in1_com), y_true = y_train$salario)
+
+r2_out1_com <- R2_Score(y_pred = exp(y_hat_out1_com), y_true = y_test$salario)
+rmse_out1_com <- RMSE(y_pred = exp(y_hat_out1_com), y_true = y_test$salario)
+
+# Métricas dentro y fuera edad
+r2_in1_edad <- R2_Score(y_pred = exp(y_hat_in1_edad), y_true = y_train$salario)
+rmse_in1_edad <- RMSE(y_pred = exp(y_hat_in1_edad), y_true = y_train$salario)
+
+r2_out1_edad <- R2_Score(y_pred = exp(y_hat_out1_edad), y_true = y_test$salario)
+rmse_out1_edad <- RMSE(y_pred = exp(y_hat_out1_edad), y_true = y_test$salario)
+
+
+# Métricas dentro y fuera sexo
+r2_in1_sexo <- R2_Score(y_pred = exp(y_hat_in1_sexo), y_true = y_train$salario)
+rmse_in1_sexo <- RMSE(y_pred = exp(y_hat_in1_sexo), y_true = y_train$salario)
+
+r2_out1_sexo <- R2_Score(y_pred = exp(y_hat_out1_sexo), y_true = y_test$salario)
+rmse_out1_sexo <- RMSE(y_pred = exp(y_hat_out1_sexo), y_true = y_test$salario)
+
+
+# Métricas dentro y fuera sexo completo
+r2_in1_sexo_com <- R2_Score(y_pred = exp(y_hat_in1_sexo_com), y_true = y_train$salario)
+rmse_in1_sexo_com <- RMSE(y_pred = exp(y_hat_in1_sexo_com), y_true = y_train$salario)
+
+r2_out1_sexo_com <- R2_Score(y_pred = exp(y_hat_out1_sexo_com), y_true = y_test$salario)
+rmse_out1_sexo_com <- RMSE(y_pred = exp(y_hat_out1_sexo_com), y_true = y_test$salario)
+
+
+modeloStepwise= stepAIC(mod_completo, direction = "both", 
+                        trace = TRUE)
+summary(modeloStepwise)
+
+modeloStepwise$anova
+summary(modeloStepwise)
+
+resultados <- data.frame(Modelo = "Modelo completo", 
+                         Muestra = "Train",
+                         R2_Score = r2_in1_com, RMSE = rmse_in1_com) %>%
+rbind(data.frame(Modelo = "Modelo completo", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_com, RMSE = rmse_out1_com)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con edad", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_edad, RMSE = rmse_in1_edad)) %>%
+  rbind(data.frame(Modelo = "Modelo con edad", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_edad, RMSE = rmse_out1_edad)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con sexo", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_sexo, RMSE = rmse_in1_sexo)) %>%
+  rbind(data.frame(Modelo = "Modelo con sexo", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_sexo, RMSE = rmse_out1_sexo)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con sexo, edad y educ", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_sexo_com, RMSE = rmse_in1_sexo_com)) %>%
+  rbind(data.frame(Modelo = "Modelo con sexo, edad y educ", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_sexo_com, RMSE = rmse_out1_sexo_com))
+resultados
+
+stargazer(mod_completo, mod_edad, mod_sexo, type="text")
+
+
+residuos <- rstandard(mod_completo)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+residuos <- rstandard(mod_sexo)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+residuos <- rstandard(mod_edad)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+# Se genera el modelo lineal, dado que se va a emplear LOOCV no es necesario
+
+# Se emplea la función cv.glm() para la validación LOOCV
+
+mod_edad <- glm(log(salario)~edad+edad_cuadrado, data = df_5)
+cv_error_edad <- cv.glm(data = df_5, glmfit =  mod_edad)
+cv_error$delta[1]
+
+mod_sexo <- glm(log(salario)~sexo, data = df_5)
+cv_error_sexo <- cv.glm(data = df_5, glmfit =  mod_sexo)
+cv_error_sexo$delta[1]
+
+mod_sexo_com <- glm(log(salario)~sexo+max_nivel_edu+edad+edad_cuadrado, data = df_5)
+cv_error_sexo_com <- cv.glm(data = df_5, glmfit =  mod_sexo_com)
+cv_error_sexo_com$delta[1]
+
+mod_completo <- lm(log(salario) ~ ., df_5)
+cv_error_completo <- cv.glm(data = df_5, glmfit =  mod_completo)
+cv_error_completo$delta[1]
+
+
+
+
+
+
+
+entrenamiento = trainControl(method = "cv", number = 10)

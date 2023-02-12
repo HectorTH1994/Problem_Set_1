@@ -42,5 +42,18 @@ histo_final_df_sin_atipicos <- g_df_sin_atipicos + scale_fill_manual(values = c(
 
 grid.arrange(histo_final_df, histo_final_df_sin_atipicos, ncol = 2)
 
-#El primer aspecto a realiozar es la estimación de la brecha salarial bajo la formula *
-### Log(w)=B1+B2Female+u, donde w hace referencia a wage o salario. 
+# 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
+
+reg_df <- lm(logingtot~female, df)
+
+red_df_sin_a <- lm(logingtot~female, df_sin_atipicos)
+
+stargazer(reg_df, type="text", digits=7)
+
+stargazer(red_df_sin_a, type="text", digits=7)
+
+# 3- Salaior igualitario para trabajos iguales: 
+## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
+
+
+## Se realiza el proceso usando el proceso FWL con boostrap: 

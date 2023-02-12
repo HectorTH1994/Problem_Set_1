@@ -473,5 +473,3 @@ cv_error_sexo_com$delta[1]
 mod_completo <- lm(log(salario) ~ ., df_5)
 cv_error_completo <- cv.glm(data = df_5, glmfit =  mod_completo)
 cv_error_completo$delta[1]
-
-

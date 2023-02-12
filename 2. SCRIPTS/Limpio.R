@@ -475,9 +475,3 @@ cv_error_completo <- cv.glm(data = df_5, glmfit =  mod_completo)
 cv_error_completo$delta[1]
 
 
-
-
-
-
-
-entrenamiento = trainControl(method = "cv", number = 10)

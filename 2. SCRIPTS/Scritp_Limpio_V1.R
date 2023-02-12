@@ -336,7 +336,7 @@ for (i in 1:1000) {
   #Estimación
   modelo_bootstrap <- lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, data = muestra_d)
   
-  #Guardando coeficientes
+  #Guardando coeficiente tes
   muestra_intercepto <-
     c(muestra_intercepto, modelo_bootstrap$coefficients[1])
   
@@ -439,7 +439,6 @@ histograma_test <- ggplot(test, aes(x = salario)) +
 
 grid.arrange(histograma_train, histograma_test, ncol = 2)
 #########CAJAS DE TEST Y TRAIN#################
-
 
 caja_train <- ggplot(train, aes(x = log(salario))) +
   geom_boxplot(fill = "#E6F1FF", color = "#4C5FA9") +

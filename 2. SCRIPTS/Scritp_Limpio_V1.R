@@ -67,6 +67,7 @@ boxplot_salarios <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
   ggtitle("Diagrama de Cajas de salario por hora") +
   labs(x = "", y = "Ingresos por hora")+
   theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(histograma_salarios, boxplot_salarios, ncol = 2)
 
 #Contamos los valores atipicos
 limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
@@ -75,9 +76,7 @@ df_atip= df %>%
   mutate(y_ingLab_m_ha_out = ifelse(test = y_ingLab_m_ha > limite_punto1, 
                                     yes = 1, 
                                     no = 0))
-table(df_atip$y_ingLab_m_ha_out)
-
-grid.arrange(histograma_salarios, boxplot_salarios, ncol = 2)
+da1<-table(df_atip$y_ingLab_m_ha_out)
 
 #normalisamos los datos aplicando log
 lgwage <-log(df$y_salary_m_hu)
@@ -107,7 +106,10 @@ df_p = df %>%
   mutate(lgwage_atipicos= ifelse(test = lgwage > limite_log, 
                                     yes = 1, 
                                     no = 0))
-table(df_p$lgwage_atipicos)
+da2<-table(df_p$lgwage_atipicos)
+
+#comparación datos atipicos
+table(da1,da2)
 
 ################ Punto No. 3 - Age-wage Profile #####################
 df_sin_atipicos<-(df %>%
@@ -165,8 +167,7 @@ diag_cajas_edad <- ggplot(df_anes, aes(x = "", y = age)) +
 
 grid.arrange(histograma_edad, diag_cajas_edad, ncol = 2)
 
-stargazer(summary(df_anes), type="text")
-
+#stargazer(summary(df_anes), type="text")
 #####################################################
 ##########MODELO PUNTO 1 ############################
 
@@ -265,30 +266,22 @@ DSADSA
 
 df <-df%>% mutate(age2 = age*age)
 df <- df %>% mutate(logingtot=log(y_ingLab_m_ha))
+df <- df %>% mutate(female = ifelse(sex == 0, 1, 0)) # se crea variable 1= mujer 0= hombre
 
-## Se genera un gráfico con las nuevas variables con fundamento en la información de las bases: 
+## Se genera un gráfico con las nuevas variables con fundamento en la información de ambas bases: 
 
 g_df<- ggplot(data=df) + 
-  geom_histogram(mapping = aes(x=logingtot , group=as.factor(sex) , fill=as.factor(sex)))
-histo_final_df <-g_df + scale_fill_manual(values = c("0"= "red" , "1"="orange") , label = c("0"="Hombre" , "1"="mujer") , name = "Sexo")
+  geom_histogram(mapping = aes(x=logingtot , group=as.factor(female) , fill=as.factor(female)))
+histo_final_df <-g_df + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("0"="Hombre" , "1"="Mujer") , name = "Sexo")
 histo_final_df
 
 # 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
 
-install.packages("xtable")
-
-reg_df <- lm(logingtot~sex, df)
+reg_df <- lm(logingtot~female, df)
 
 stargazer(reg_df, type="text", digits=7)
 
-# Contamos cuantos hombres y mujeres hay en la muestra: 
-
-library(plyr)
-
-ddply(df_anes,.(sex), nrow)
-
-# Salario igualitario para trabajos iguales:
-
+# 3- Salaior igualitario para trabajos iguales: 
 ## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
 df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel")])
@@ -297,16 +290,13 @@ View(df_anes)
 
 modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
                   data = df_anes)
-
-stargazer(modelonocond, type="text", digits=7)
-
+summary(modelonocond)
 ####Modelo condicionado
 
 ###Obteniendo residuos
 
 modelcondic = lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, 
                  data = df_anes)
-
 summary(modelcondic)
 
 resid1 = residuals(lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado, 
@@ -345,12 +335,8 @@ for (i in 1:1000) {
   
 }
 
-stargazer(modelo_bootstrap, type="text", digits=7)
-
 #gourpby van los predictores 
-
 #mean_y = variable y
-
 ## añadir Agregamos una columna con los predictores para el caso yhat_reg
 
 summ = df %>%  
@@ -378,8 +364,6 @@ ggplot(summ) +
   ) +
   theme_bw()+ 
   scale_y_continuous(limits = c(7, 10))
-
-stargazer(reg_df, modelcondic,modelo_bootstrap, type="text", digits=7)
 
 ################ Punto No. 5 - Predicting earnings #####################
 

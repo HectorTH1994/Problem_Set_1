@@ -181,6 +181,7 @@ df_anes$salario_hat = predict(fit_sin_atipicos_p3)
 df$salario_hat_age = predict(fit_con_atipicos_log)
 
 
+
 # plot predicted values
 summ = df_anes %>%  
   group_by(

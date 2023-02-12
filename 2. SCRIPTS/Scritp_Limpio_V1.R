@@ -5,7 +5,7 @@
 #Preparación del espacio: 
   
 library(pacman)
-p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets", "skimr","gridExtra")
+p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics","boot")
 library(data.table)
 
 ############## Scraping y Limpieza de datos ###################
@@ -32,7 +32,7 @@ Base_datos_final <- as_tibble(data)
 saveRDS(Base_datos_final, file = "Base_datos_final.rds")
 view(data)
 
-# excluimos los datos que nos interesan (mayores de 18 -  empleados)
+#excluimos los datos que nos interesan (mayores de 18 -  empleados)
 data<-(data %>%
          filter(age >= 18, dsi == 0))
 
@@ -47,45 +47,55 @@ colSums(is.na(data))
 #Calculamos el porcentaje de los datos diferentes de NA
 sum(data$y_ingLab_m_ha > 0 & !is.na(data$y_ingLab_m_ha) )/length(data$y_ingLab_m_ha)
 
-# se infiere que el 43% de la base presenta datos 
+# se infiere que solo el 43% de la base presenta datos de ineteres
 
 #eliminamos todas las filas con un valor faltante en la columna de nuestra valiable dependiente (y_ingLab_m_ha)
 df <- data[!is.na(data$y_ingLab_m_ha), ] %>% as.data.frame()
 
-limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
+
+# Ahora vamos a revisar la distribución de nuestra variable a predecir #EBE9FF
+histograma_salarios <- ggplot(df, aes(x = y_ingLab_m_ha)) +
+  geom_histogram(fill = "#EBE9FF", color = "#A2AEED") +
+  ggtitle("Histograma de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
+##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
+
+boxplot_salarios <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
+  geom_boxplot(fill = "#DBDDFF", color = "#645A9F") +
+  ggtitle("Diagrama de Cajas de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 #Contamos los valores atipicos
+limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
 
-df = df %>% 
+df_atip= df %>% 
   mutate(y_ingLab_m_ha_out = ifelse(test = y_ingLab_m_ha > limite_punto1, 
                                     yes = 1, 
                                     no = 0))
-table(df_p$y_ingLab_m_ha_out)
+table(df_atip$y_ingLab_m_ha_out)
 
-# Ahora vamos a revisar la distribución de nuestra variable a predecir
-HistogramWage <- ggplot(df, aes(x = y_ingLab_m_ha)) +
-  geom_histogram( fill = "#BFEFFF") +
-  labs(x = "Salario por horas", y = "Pesos colombianos") +
-  theme_bw()
-grid.arrange(HistogramWage)
-
-##Realizamos un analisis exploratorio de valores atipicos para la varaible de interes que es y_ingLab_m_ha
-
-BoxplotWage <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
-  geom_boxplot(fill = "#CFDCEF", color = "#F5D8C0") +
-  ggtitle("Diagrama de Cajas de salario por hora") +
-  theme(plot.title = element_text(hjust = 0.5))
-
-grid.arrange(BoxplotWage)
+grid.arrange(histograma_salarios, boxplot_salarios, ncol = 2)
 
 #normalisamos los datos aplicando log
 lgwage <-log(df$y_salary_m_hu)
 df<-cbind(df,lgwage)
 
-BoxplotWage <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
-  geom_boxplot(fill = "#CFDCEF", color = "#F5D8C0") +
-  ggtitle("Diagrama de Cajas de salario por hora") +
+histogramalogsalarios <- ggplot(df, aes(x = y_ingLab_m_ha)) +
+  geom_histogram(fill = "#EEF8F0", color = "#388E3C") +
+  ggtitle("Histograma de salario por hora") +
+  labs(x = "", y = "Ingresos por hora")+
   theme(plot.title = element_text(hjust = 0.5))
+
+boxplotlogsalarios <- ggplot(df, aes(x = "Salarios", y = lgwage)) +
+  geom_boxplot(fill = "#E3F2FD", color = "#30BFDD") +
+  labs(x = "", y = "Ingresos por hora")
+  ggtitle("Diagrama de Cajas de log salario por hora") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histogramalogsalarios, boxplotlogsalarios , ncol = 2)
 
 GrafDispercion <- plot(lgwage,pch=19,col="#FFF6F5")
 
@@ -100,60 +110,185 @@ df_p = df %>%
 table(df_p$lgwage_atipicos)
 
 ################ Punto No. 3 - Age-wage Profile #####################
+df_sin_atipicos<-(df %>%
+                    filter(y_ingLab_m_ha <= limite_punto1))
 
+df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age")])
+df_anes$age_cuadrado <- df_anes$age^2
+df_anes$log_salario <- log(df_anes$y_ingLab_m_ha)
+df$age_cuadrado <- df$age^2
+
+
+##Calculamos la matriz de correlaciones
+
+pairs.panels(df_anes,
+             smooth = TRUE,      # Si TRUE, dibuja ajuste suavizados de tipo loess
+             scale = FALSE,      # Si TRUE, escala la fuente al grado de correlaci?n
+             density = TRUE,     # Si TRUE, a?ade histogramas y curvas de densidad
+             ellipses = TRUE,    # Si TRUE, dibuja elipses
+             method = "pearson", # M?todo de correlaci?n (tambi?n "spearman" o "kendall")
+             pch = 21,           # S?mbolo pch
+             lm = FALSE,         # Si TRUE, dibuja un ajuste lineal en lugar de un ajuste LOESS
+             cor = TRUE,         # Si TRUE, agrega correlaciones
+             jiggle = FALSE,     # Si TRUE, se a?ade ruido a los datos
+             factor = 2,         # Nivel de ruido a?adido a los datos
+             hist.col = 4,       # Color de los histogramas
+             stars = TRUE,       # Si TRUE, agrega el nivel de significaci?n con estrellas
+             ci = TRUE)          # Si TRUE, a?ade intervalos de confianza a los ajustes
+
+
+
+##Grafica de dispersion
+
+ggplot(df_anes, aes(x = age, y = log_salario))+
+  geom_point(color = "red", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  theme_classic() +
+  labs(x = "Edad", y = "log(Salario por hora) [COP]",
+       title = "Grafico de dispersi?n edad vs log(salarios)",
+       caption = "Datos de ejemplo")
+
+#Observamos si hay atipicos en los a?os
+
+# histograma edad
+histograma_edad <- ggplot(df_anes, aes(x = age)) +
+  geom_histogram(fill = "blue", color = "black") +
+  ggtitle("Histograma de edades") +
+  labs(x = "Edades", y = "Eventos")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+diag_cajas_edad <- ggplot(df_anes, aes(x = "", y = age)) +
+  geom_boxplot(fill = "red", color = "black") +
+  ggtitle("Diagrama de Cajas de edades") +
+  labs(x = "", y = "Edades")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histograma_edad, diag_cajas_edad, ncol = 2)
+
+#stargazer(summary(df_anes), type="text")
+#####################################################
+##########MODELO PUNTO 1 ############################
+
+
+fit_sin_atipicos_p3<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df_anes, x = TRUE)
+fit_con_atipicos_log<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
+stargazer(fit_sin_atipicos_p3,fit_con_atipicos_log, type="text")
+
+##Agregamos una columna con los predictores
+df_anes$salario_hat = predict(fit_sin_atipicos_p3)
+df$salario_hat_age = predict(fit_con_atipicos_log)
+
+
+
+# plot predicted values
+summ = df_anes %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(log(y_ingLab_m_ha)),
+    yhat_reg = mean(salario_hat), .groups="drop"
+  ) 
+
+ggplot(summ) + 
+  geom_point(
+    aes(x = age, y = mean_y),
+    color = "blue", size = 2
+  ) + 
+  geom_line(
+    aes(x = age, y = yhat_reg), 
+    color = "green", size = 1.5
+  ) + 
+  labs(
+    title = "Salarios usando como predictor la edad y sin atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  ) +
+  theme_bw()
+
+
+summ = df %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(log(y_ingLab_m_ha)),
+    yhat_reg = mean(salario_hat_age), .groups="drop"
+  ) 
+
+ggplot(summ) + 
+  geom_point(
+    aes(x = age, y = mean_y),
+    color = "blue", size = 2
+  ) + 
+  geom_line(
+    aes(x = age, y = yhat_reg), 
+    color = "green", size = 1.5
+  ) + 
+  labs(
+    title = "Salarios usando como predictor la edad y con atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  ) +
+  theme_bw()+ 
+  scale_y_continuous(limits = c(7, 10))
+
+###############################################################
+#################BOOTSTRAP#####################################
+###############################################################
+# Define la funci?n que se usar? para el bootstrap
+boot_prediccion <- function(df_anes, indices) {
+  modelo_boot <- lm(y_ingLab_m_ha ~ ., data = df_anes[indices,])
+  prediccion <- predict(modelo_boot, newdata = tibble(x = 86))[1]
+  return(prediccion)
+}
+
+# Realiza el bootstrap
+resultados_boot <- boot(df_anes, boot_prediccion, R = 100000)
+
+# Calcula los percentiles para construir el intervalo de confianza
+alpha <- 0.05
+limite_inferior <- quantile(resultados_boot$t, probs = alpha / 2)
+limite_superior <- quantile(resultados_boot$t, probs = 1 - alpha / 2)
+
+# Muestra el intervalo de confianza
+cat("El intervalo de confianza al", 100 * (1 - alpha), "% para X = 1.5 es: [", limite_inferior, ",", limite_superior, "]")
+
+#########################################################################
+DSADSA
 
 
 ################ Punto No. 4 - Gender earnings gap #####################
-
-#Se llaman las bases de datos generadas en el proceso de scraping y limpieza de datos e igualmente se inspeccionan:
-
-df_sin_atipicos <- import("df_sin_atipicos.rds")
-
-df <- import("df.rds")
 
 ## Se crean las variables logaritimas de ingreso "y_ingLab_m_ha" y sexo para las bases de dato utilizadas: 
 
 df <-df%>% mutate(age2 = age*age)
 df <- df %>% mutate(logingtot=log(y_ingLab_m_ha))
-df_sin_atipicos <-df_sin_atipicos %>% mutate(age2 = age*age)
-df_sin_atipicos <- df_sin_atipicos %>% mutate(logingtot=log(y_ingLab_m_ha))
 df <- df %>% mutate(female = ifelse(sex == 0, 1, 0)) # se crea variable 1= mujer 0= hombre
-df_sin_atipicos <- df_sin_atipicos %>% mutate(female = ifelse(sex == 0, 1, 0))
 
 ## Se genera un gráfico con las nuevas variables con fundamento en la información de ambas bases: 
 
 g_df<- ggplot(data=df) + 
   geom_histogram(mapping = aes(x=logingtot , group=as.factor(female) , fill=as.factor(female)))
-
 histo_final_df <-g_df + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("0"="Hombre" , "1"="Mujer") , name = "Sexo")
-
-g_df_sin_atipicos <- ggplot(data=df_sin_atipicos) + 
-  geom_histogram(mapping = aes(x=logingtot , group=as.factor(female) , fill=as.factor(female)))
-
-histo_final_df_sin_atipicos <- g_df_sin_atipicos + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("0"="Hombre" , "1"="Mujer") , name = "Sexo")
-
-grid.arrange(histo_final_df, histo_final_df_sin_atipicos, ncol = 2)
+histo_final_df
 
 # 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
 
 reg_df <- lm(logingtot~female, df)
 
-red_df_sin_a <- lm(logingtot~female, df_sin_atipicos)
-
 stargazer(reg_df, type="text", digits=7)
-
-stargazer(red_df_sin_a, type="text", digits=7)
 
 # 3- Salaior igualitario para trabajos iguales: 
 ## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
-df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age", "sex", "maxEducLevel")])
+df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel")])
 df_anes$age_cuadrado <- df_anes$age^2
 View(df_anes)
 
 modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
                   data = df_anes)
-
+summary(modelonocond)
 ####Modelo condicionado
 
 ###Obteniendo residuos
@@ -198,4 +333,38 @@ for (i in 1:1000) {
   
 }
 
+#gourpby van los predictores 
+#mean_y = variable y
+## añadir Agregamos una columna con los predictores para el caso yhat_reg
+
+summ = df %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(log(y_ingLab_m_ha)),
+    yhat_reg = mean(salario_hat_age), .groups="drop"
+  ) 
+
+ggplot(summ) + 
+  geom_point(
+    aes(x = age, y = mean_y),
+    color = "blue", size = 2
+  ) + 
+  geom_line(
+    aes(x = age, y = yhat_reg), 
+    color = "green", size = 1.5
+  ) + 
+  labs(
+    title = "Salarios usando como predictor la edad y con atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  ) +
+  theme_bw()+ 
+  scale_y_continuous(limits = c(7, 10))
+
 ################ Punto No. 5 - Predicting earnings #####################
+
+
+
+

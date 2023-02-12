@@ -3,7 +3,7 @@
 ### Carlos, Danna, H√©ctor, Alexa
 #Se prepara el espacio por medio del llamado a los paquetes y librer√≠as: 
 library(pacman)
-p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics")
+p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets","EnvStats", "skimr","gridExtra", "psych", "PerformanceAnalytics","boot")
 library(data.table)
 
 
@@ -168,12 +168,15 @@ diag_cajas_edad <- ggplot(df_anes, aes(x = "", y = age)) +
 grid.arrange(histograma_edad, diag_cajas_edad, ncol = 2)
 
 stargazer(summary(df_anes), type="latex")
+#####################################################
+##########MODELO PUNTO 1 ############################
 
-##########MODELO PUNTO 1 #############
 
 fit_sin_atipicos_p3<- lm(y_ingLab_m_ha ~ ., data = df_anes, x = TRUE)
 fit_con_atipicos_p3<- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df, x = TRUE)
-stargazer(fit_sin_atipicos_p3,fit_con_atipicos_p3, type="latex")
+
+fit_con_atipicos_prueba<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
+stargazer(fit_sin_atipicos_p3,fit_con_atipicos_p3,fit_con_atipicos_prueba, type="text")
 
 ##Agregamos una columna con los predictores
 df_anes$salario_hat = predict(fit_sin_atipicos_p3)
@@ -230,5 +233,30 @@ ggplot(summ) +
     x = "Edad",
     y = "Salario por hora"
   ) +
-  theme_bw()
+  theme_bw()+ 
+  scale_y_continuous(limits = c(0, 20000))
+
+###############################################################
+#################BOOTSTRAP#####################################
+###############################################################
+# Define la funciÛn que se usar· para el bootstrap
+boot_prediccion <- function(df_anes, indices) {
+  modelo_boot <- lm(y_ingLab_m_ha ~ ., data = df_anes[indices,])
+  prediccion <- predict(modelo_boot, newdata = tibble(x = 86))[1]
+  return(prediccion)
+}
+
+# Realiza el bootstrap
+resultados_boot <- boot(df_anes, boot_prediccion, R = 100000)
+
+# Calcula los percentiles para construir el intervalo de confianza
+alpha <- 0.05
+limite_inferior <- quantile(resultados_boot$t, probs = alpha / 2)
+limite_superior <- quantile(resultados_boot$t, probs = 1 - alpha / 2)
+
+# Muestra el intervalo de confianza
+cat("El intervalo de confianza al", 100 * (1 - alpha), "% para X = 1.5 es: [", limite_inferior, ",", limite_superior, "]")
+
+#########################################################################
+DSADSA
 

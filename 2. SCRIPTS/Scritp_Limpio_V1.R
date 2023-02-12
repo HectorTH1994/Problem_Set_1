@@ -266,18 +266,17 @@ DSADSA
 
 df <-df%>% mutate(age2 = age*age)
 df <- df %>% mutate(logingtot=log(y_ingLab_m_ha))
-df <- df %>% mutate(female = ifelse(sex == 0, 1, 0)) # se crea variable 1= mujer 0= hombre
 
 ## Se genera un gráfico con las nuevas variables con fundamento en la información de ambas bases: 
 
 g_df<- ggplot(data=df) + 
-  geom_histogram(mapping = aes(x=logingtot , group=as.factor(female) , fill=as.factor(female)))
+  geom_histogram(mapping = aes(x=logingtot , group=as.factor(sex) , fill=as.factor(sex)))
 histo_final_df <-g_df + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("0"="Hombre" , "1"="Mujer") , name = "Sexo")
 histo_final_df
 
 # 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
 
-reg_df <- lm(logingtot~female, df)
+reg_df <- lm(logingtot~sex, df)
 
 stargazer(reg_df, type="text", digits=7)
 
@@ -291,6 +290,7 @@ View(df_anes)
 modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
                   data = df_anes)
 summary(modelonocond)
+
 ####Modelo condicionado
 
 ###Obteniendo residuos
@@ -363,7 +363,7 @@ ggplot(summ) +
   ) + 
   labs(
     title = "Salarios usando como predictor el genero",
-    x = "female",
+    x = "sex",
     y = "Salario por hora"
   ) +
   theme_bw()+ 

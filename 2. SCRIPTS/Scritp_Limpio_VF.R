@@ -2,15 +2,15 @@
 ###Secript Final
 ### Alexandra Rizo, Danna Camila Bolaños, Héctor Taicuán, Carlos Vergara
 -------------------------------------------------------------------------------------------------------
-# 0- Preparación del espacio: 
+#Preparación del espacio: 
   
 library(pacman)
 p_load("tidyverse","rvest","writexl","stargazer","ggplot2","reshape2", "dplyr","datasets", "skimr","gridExtra")
 library(data.table)
 
-# 1- Scraping y Limpieza de datos: 
+############## Scraping y Limpieza de datos ###################
 
-# 1.1. Se realiza el scraping de los Chunks 1 a 10: 
+# Se realiza el scraping de los Chunks 1 a 10: 
 
 url <- "https://ignaciomsarmiento.github.io/GEIH2018_sample/pages/geih_page_"
 data <- data.frame()
@@ -39,7 +39,7 @@ data<-(data %>%
 #Analisamos la estructura de la base 
 glimpse(data)
 
-####################### Analisis na ##########################
+# Analisis na
 
 #Analisis de na por variable
 colSums(is.na(data))
@@ -98,3 +98,13 @@ df_p = df %>%
                                     yes = 1, 
                                     no = 0))
 table(df_p$lgwage_atipicos)
+
+################ Punto No. 3 - Age-wage Profile #####################
+
+
+
+################ Punto No. 4 - Gender earnings gap #####################
+
+
+
+################ Punto No. 5 - Predicting earnings #####################

@@ -335,31 +335,35 @@ for (i in 1:1000) {
   
 }
 
+##Grafica modelo no condicionado
 #gourpby van los predictores 
 #mean_y = variable y
 ## añadir Agregamos una columna con los predictores para el caso yhat_reg
 
+##Agregamos una columna con los predictores
+df_anes$salario_sex = predict(df)
+
 summ = df %>%  
   group_by(
-    age, age_cuadrado
+   sex 
   ) %>%  
   summarize(
     mean_y = mean(log(y_ingLab_m_ha)),
-    yhat_reg = mean(salario_hat_age), .groups="drop"
+    yhat_reg = mean(salario_hat_sexx), .groups="drop"
   ) 
 
 ggplot(summ) + 
   geom_point(
-    aes(x = age, y = mean_y),
+    aes(x = sex, y = mean_y),
     color = "blue", size = 2
   ) + 
   geom_line(
-    aes(x = age, y = yhat_reg), 
+    aes(x = sex, y = yhat_reg), 
     color = "green", size = 1.5
   ) + 
   labs(
-    title = "Salarios usando como predictor la edad y con atipicos",
-    x = "Edad",
+    title = "Salarios usando como predictor el genero",
+    x = "female",
     y = "Salario por hora"
   ) +
   theme_bw()+ 

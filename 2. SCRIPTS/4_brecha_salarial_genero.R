@@ -55,5 +55,56 @@ stargazer(red_df_sin_a, type="text", digits=7)
 # 3- Salaior igualitario para trabajos iguales: 
 ## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
+#####Punto 4
 
-## Se realiza el proceso usando el proceso FWL con boostrap: 
+
+####Punto a
+
+modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
+                  data = df_anes)
+
+####Modelo condicionado
+
+###Obteniendo residuos
+
+modelcondic = lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, 
+                 data = df_anes)
+summary(modelcondic)
+
+resid1 = residuals(lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado, 
+                      data = df_anes))
+
+####Regresion de residuos con máximo nivel de escolaridad alcanzado
+
+resid2= residuals(lm(maxEducLevel ~ sex+age+age_cuadrado, 
+                     data = df_anes))
+
+#####Regresión de los residuos 
+
+coefficients(lm(resid1 ~ resid2))['resid2']
+
+#####Con boostrap
+
+set.seed(123)
+
+###Contenedores para los coeficientes
+
+muestra_intercepto <- NULL
+muestra_otros_regresores <- NULL
+
+for (i in 1:1000) {
+  muestra_d = df_anes[sample(1:nrow(df_anes), nrow(df_anes), replace = TRUE), ]
+  
+  #Estimación
+  modelo_bootstrap <- lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, data = muestra_d)
+  
+  #Guardando coeficientes
+  muestra_intercepto <-
+    c(muestra_intercepto, modelo_bootstrap$coefficients[1])
+  
+  muestra_otros_regresores <-
+    c(muestra_otros_regresores, modelo_bootstrap$coefficients[-1])
+  
+}
+
+ 

@@ -52,6 +52,16 @@ sum(data$y_ingLab_m_ha > 0 & !is.na(data$y_ingLab_m_ha) )/length(data$y_ingLab_m
 #eliminamos todas las filas con un valor faltante en la columna de nuestra valiable dependiente (y_ingLab_m_ha)
 df <- data[!is.na(data$y_ingLab_m_ha), ] %>% as.data.frame()
 
+limite_punto1 <- quantile(x=df$y_ingLab_m_ha)[4]+1.5*IQR(x=df$y_ingLab_m_ha )
+
+#Contamos los valores atipicos
+
+df = df %>% 
+  mutate(y_ingLab_m_ha_out = ifelse(test = y_ingLab_m_ha > limite_punto1, 
+                                    yes = 1, 
+                                    no = 0))
+table(df_p$y_ingLab_m_ha_out)
+
 # Ahora vamos a revisar la distribución de nuestra variable a predecir
 HistogramWage <- ggplot(df, aes(x = y_ingLab_m_ha)) +
   geom_histogram( fill = "#BFEFFF") +
@@ -67,6 +77,7 @@ BoxplotWage <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
   theme(plot.title = element_text(hjust = 0.5))
 
 grid.arrange(BoxplotWage)
+
 #normalisamos los datos aplicando log
 lgwage <-log(df$y_salary_m_hu)
 df<-cbind(df,lgwage)
@@ -78,4 +89,12 @@ BoxplotWage <- ggplot(df, aes(x = "Salarios", y = y_ingLab_m_ha)) +
 
 GrafDispercion <- plot(lgwage,pch=19,col="#FFF6F5")
 
+limite_log <- quantile(x=df$lgwage)[4]+1.5*IQR(x=df$lgwage)
 
+#Contamos los valores atipicos con la variable log:
+
+df_p = df %>% 
+  mutate(lgwage_atipicos= ifelse(test = lgwage > limite_log, 
+                                    yes = 1, 
+                                    no = 0))
+table(df_p$lgwage_atipicos)

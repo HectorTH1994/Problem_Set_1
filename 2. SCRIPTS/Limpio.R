@@ -112,14 +112,14 @@ grid.arrange(histograma_salarios_sin_at, boxplot_salarios_sin_at, ncol = 2)
 ###############PUNTO 1#############################################
 ##################################################################
 
+df_sin_atipicos<-(df %>%
+                    filter(y_ingLab_m_ha <= limite_punto1))
 
 df_anes <- na.omit(df_sin_atipicos[c("y_ingLab_m_ha","age")])
 df_anes$age_cuadrado <- df_anes$age^2
+df_anes$log_salario <- log(df_anes$y_ingLab_m_ha)
 df$age_cuadrado <- df$age^2
 
-
-str(df_anes)
-skim(df_anes) %>% head()
 
 ##Calculamos la matriz de correlaciones
 
@@ -142,12 +142,12 @@ pairs.panels(df_anes,
 
 ##Grafica de dispersion
 
-ggplot(df_anes, aes(x = age, y = y_ingLab_m_ha)) +
+ggplot(df_anes, aes(x = age, y = log_salario))+
   geom_point(color = "red", size = 2) +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   theme_classic() +
-  labs(x = "Edad", y = "Salario por hora",
-       title = "Grafico de dispersión edad vs salarios",
+  labs(x = "Edad", y = "log(Salario por hora) [COP]",
+       title = "Grafico de dispersión edad vs log(salarios)",
        caption = "Datos de ejemplo")
 
 #Observamos si hay atipicos en los años
@@ -167,20 +167,18 @@ diag_cajas_edad <- ggplot(df_anes, aes(x = "", y = age)) +
 
 grid.arrange(histograma_edad, diag_cajas_edad, ncol = 2)
 
-stargazer(summary(df_anes), type="latex")
+#stargazer(summary(df_anes), type="text")
 #####################################################
 ##########MODELO PUNTO 1 ############################
 
 
-fit_sin_atipicos_p3<- lm(y_ingLab_m_ha ~ ., data = df_anes, x = TRUE)
-fit_con_atipicos_p3<- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df, x = TRUE)
-
-fit_con_atipicos_prueba<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
-stargazer(fit_sin_atipicos_p3,fit_con_atipicos_p3,fit_con_atipicos_prueba, type="text")
+fit_sin_atipicos_p3<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df_anes, x = TRUE)
+fit_con_atipicos_log<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
+stargazer(fit_sin_atipicos_p3,fit_con_atipicos_log, type="text")
 
 ##Agregamos una columna con los predictores
 df_anes$salario_hat = predict(fit_sin_atipicos_p3)
-df$salario_hat_age = predict(fit_con_atipicos_p3)
+df$salario_hat_age = predict(fit_con_atipicos_log)
 
 
 # plot predicted values
@@ -189,7 +187,7 @@ summ = df_anes %>%
     age, age_cuadrado
   ) %>%  
   summarize(
-    mean_y = mean(y_ingLab_m_ha),
+    mean_y = mean(log(y_ingLab_m_ha)),
     yhat_reg = mean(salario_hat), .groups="drop"
   ) 
 
@@ -215,7 +213,7 @@ summ = df %>%
     age, age_cuadrado
   ) %>%  
   summarize(
-    mean_y = mean(y_ingLab_m_ha),
+    mean_y = mean(log(y_ingLab_m_ha)),
     yhat_reg = mean(salario_hat_age), .groups="drop"
   ) 
 
@@ -234,7 +232,7 @@ ggplot(summ) +
     y = "Salario por hora"
   ) +
   theme_bw()+ 
-  scale_y_continuous(limits = c(0, 20000))
+  scale_y_continuous(limits = c(7, 10))
 
 ###############################################################
 #################BOOTSTRAP#####################################

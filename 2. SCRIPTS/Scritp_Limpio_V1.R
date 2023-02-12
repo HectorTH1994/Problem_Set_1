@@ -384,5 +384,94 @@ stargazer(reg_df, modelcondic,modelo_bootstrap, type="text", digits=7)
 ################ Punto No. 5 - Predicting earnings #####################
 
 
+#################PUNTO 5###################
+####CREAMOS DATAFRAME
 
+df_5 <- df[c("y_ingLab_m_ha", "age", "p6210s1", "totalHoursWorked", "sizeFirm", "oficio","estrato1","sex","maxEducLevel")]
+df_5 <- df_5[!is.na(df$maxEducLevel), ]
+df_5 = rename(df_5, c(salario="y_ingLab_m_ha", edad="age", gr_escolaridad_ap = "p6210s1", horas_trabajadas_s="totalHoursWorked", tamano_firma="sizeFirm",sexo="sex",max_nivel_edu="maxEducLevel"))
+df_5$edad_cuadrado <- df_5$edad^2
+
+######variables categoricas##########
+
+# Definimos las variables categoricas
+variables_categoricas <- c("estrato1", "sexo","max_nivel_edu","sizeFirm")
+
+for (v in variables_categoricas) {
+  df_5[, v] <- as.factor(df_5[, v, drop = T])
+}
+
+str(df_5)
+
+###Verificamos que no hayan na####
+
+sum(is.na(df_5))
+
+##Dividimos los datos
+
+set.seed(1121)
+sample <- sample(c(TRUE, FALSE), nrow(df_5), replace=TRUE, prob=c(0.7,0.3))
+sum(sample)/nrow(df_5)
+
+train  <- df_5[sample, ] #train sample those that are TRUE in the sample index
+test   <- df_5[!sample, ] #test sample those that are FALSE in the sample index
+
+
+# Convertimos salario y en log
+y_train <- log(train[,"salario"])
+X_train <- select(train, -salario)
+y_test <- log(test[,"salario"])
+X_test <- select(test, -salario)
+
+#########Se realiza los histogramas
+
+histograma_train <- ggplot(train, aes(x = salario)) +
+  geom_histogram(fill = "#E6F1FF", color = "#4C5FA9") +
+  ggtitle("TRAIN") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+histograma_test <- ggplot(test, aes(x = salario)) +
+  geom_histogram(fill = "#E0F2E6", color = "#45958C") +
+  ggtitle("TEST") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(histograma_train, histograma_test, ncol = 2)
+#########CAJAS DE TEST Y TRAIN#################
+
+
+caja_train <- ggplot(train, aes(x = log(salario))) +
+  geom_boxplot(fill = "#E6F1FF", color = "#4C5FA9") +
+  ggtitle("TRAIN") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+caja_test <- ggplot(test, aes(x = log(salario))) +
+  geom_boxplot(fill = "#E0F2E6", color = "#45958C") +
+  ggtitle("TEST") +
+  labs(x = "", y = "Ingresos por hora")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(caja_train, caja_test, ncol = 2)
+
+########## Estudiemos la relación entre el puntaje zscore con la desnutrición########
+ggplot(train, aes(x = edad, y = salario, 
+               color = estrato1)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Edad", y = "Salario [COP]") +
+  scale_color_discrete(name = "Estrato socieconomico") +
+  theme(legend.position="bottom")
+
+###NO TIENE SENTIDO QUE EL VALOR MAXIMO EN SALARIOS SEA UNA PERSONA ESTRATO 4
+
+
+# Si no se especifica valor de lambda, se selecciona un rango automático.
+
+
+mod_completo <- lm(log(salario) ~ ., train)
+mod_edad <- lm (log(salario)~edad+edad_cuadrado, train)
+mod_sexo <- lm (log(salario)~sexo, train)
+mod_sexo_completo<- lm (log(salario)~sexo+max_nivel_edu+edad+edad_cuadrado, train)
 

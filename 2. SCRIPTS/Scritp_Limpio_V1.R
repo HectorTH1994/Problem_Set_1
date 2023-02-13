@@ -495,3 +495,104 @@ mod_edad <- lm (log(salario)~edad+edad_cuadrado, train)
 mod_sexo <- lm (log(salario)~sexo, train)
 mod_sexo_completo<- lm (log(salario)~sexo+max_nivel_edu+edad+edad_cuadrado, train)
 
+# Métricas dentro y fuera completo
+r2_in1_com <- R2_Score(y_pred = exp(y_hat_in1_com), y_true = y_train$salario)
+rmse_in1_com <- RMSE(y_pred = exp(y_hat_in1_com), y_true = y_train$salario)
+
+r2_out1_com <- R2_Score(y_pred = exp(y_hat_out1_com), y_true = y_test$salario)
+rmse_out1_com <- RMSE(y_pred = exp(y_hat_out1_com), y_true = y_test$salario)
+
+# Métricas dentro y fuera edad
+r2_in1_edad <- R2_Score(y_pred = exp(y_hat_in1_edad), y_true = y_train$salario)
+rmse_in1_edad <- RMSE(y_pred = exp(y_hat_in1_edad), y_true = y_train$salario)
+
+r2_out1_edad <- R2_Score(y_pred = exp(y_hat_out1_edad), y_true = y_test$salario)
+rmse_out1_edad <- RMSE(y_pred = exp(y_hat_out1_edad), y_true = y_test$salario)
+
+# Métricas dentro y fuera sexo
+r2_in1_sexo <- R2_Score(y_pred = exp(y_hat_in1_sexo), y_true = y_train$salario)
+rmse_in1_sexo <- RMSE(y_pred = exp(y_hat_in1_sexo), y_true = y_train$salario)
+
+r2_out1_sexo <- R2_Score(y_pred = exp(y_hat_out1_sexo), y_true = y_test$salario)
+rmse_out1_sexo <- RMSE(y_pred = exp(y_hat_out1_sexo), y_true = y_test$salario)
+
+
+# Métricas dentro y fuera sexo completo
+r2_in1_sexo_com <- R2_Score(y_pred = exp(y_hat_in1_sexo_com), y_true = y_train$salario)
+rmse_in1_sexo_com <- RMSE(y_pred = exp(y_hat_in1_sexo_com), y_true = y_train$salario)
+
+r2_out1_sexo_com <- R2_Score(y_pred = exp(y_hat_out1_sexo_com), y_true = y_test$salario)
+rmse_out1_sexo_com <- RMSE(y_pred = exp(y_hat_out1_sexo_com), y_true = y_test$salario)
+
+
+modeloStepwise= stepAIC(mod_completo, direction = "both", 
+                        trace = TRUE)
+summary(modeloStepwise)
+
+modeloStepwise$anova
+summary(modeloStepwise)
+
+resultados <- data.frame(Modelo = "Modelo completo", 
+                         Muestra = "Train",
+                         R2_Score = r2_in1_com, RMSE = rmse_in1_com) %>%
+rbind(data.frame(Modelo = "Modelo completo", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_com, RMSE = rmse_out1_com)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con edad", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_edad, RMSE = rmse_in1_edad)) %>%
+  rbind(data.frame(Modelo = "Modelo con edad", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_edad, RMSE = rmse_out1_edad)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con sexo", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_sexo, RMSE = rmse_in1_sexo)) %>%
+  rbind(data.frame(Modelo = "Modelo con sexo", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_sexo, RMSE = rmse_out1_sexo)) %>%
+  
+  rbind(data.frame(Modelo = "Modelo con sexo, edad y educ", 
+                   Muestra = "Train",
+                   R2_Score = r2_in1_sexo_com, RMSE = rmse_in1_sexo_com)) %>%
+  rbind(data.frame(Modelo = "Modelo con sexo, edad y educ", 
+                   Muestra = "TEST",
+                   R2_Score = r2_out1_sexo_com, RMSE = rmse_out1_sexo_com))
+resultados
+
+stargazer(mod_completo, mod_edad, mod_sexo, type="text")
+
+
+residuos <- rstandard(mod_completo)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+residuos <- rstandard(mod_sexo)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+residuos <- rstandard(mod_edad)
+qqnorm(residuos,col="blue")
+qqline(residuos,col="red")
+
+# Se genera el modelo lineal, dado que se va a emplear LOOCV no es necesario
+
+# Se emplea la función cv.glm() para la validación LOOCV
+
+mod_edad <- glm(log(salario)~edad+edad_cuadrado, data = df_5)
+cv_error_edad <- cv.glm(data = df_5, glmfit =  mod_edad)
+cv_error$delta[1]
+
+mod_sexo <- glm(log(salario)~sexo, data = df_5)
+cv_error_sexo <- cv.glm(data = df_5, glmfit =  mod_sexo)
+cv_error_sexo$delta[1]
+
+mod_sexo_com <- glm(log(salario)~sexo+max_nivel_edu+edad+edad_cuadrado, data = df_5)
+cv_error_sexo_com <- cv.glm(data = df_5, glmfit =  mod_sexo_com)
+cv_error_sexo_com$delta[1]
+
+mod_completo <- lm(log(salario) ~ ., df_5)
+cv_error_completo <- cv.glm(data = df_5, glmfit =  mod_completo)
+cv_error_completo$delta[1]
+

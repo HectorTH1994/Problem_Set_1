@@ -371,36 +371,15 @@ edad_pico_mujeres
 
 ##Agregamos una columna con los predictores
 
-df_anes$salario_edad = predict(modelcondic)
+df_anes <- df_anes %>% ungroup() %>% mutate(y_hat2 = predict(modelcondic))
 
-summ = df_anes %>%  
-  group_by(
-   sex 
-  ) %>%  
-  summarize(
-    mean_y = mean(log(y_ingLab_m_ha)),
-    yhat_reg = mean(salario_edad), .groups="drop"
-  ) 
-
-ggplot(summ) + 
-  geom_point(
-    aes(x = sex, y = mean_y),
-    color = "blue", size = 2
-  ) + 
-  geom_line(
-    aes(x = sex, y = yhat_reg), 
-    color = "green", size = 1.5
-  ) + 
-  labs(
-    title = "Salarios usando como predictor el genero",
-    x = "sex",
-    y = "Salario por hora"
-  ) +
-  theme_bw()+ 
-  scale_y_continuous(limits = c(7, 10))
-
+ggplot(data = df_anes , 
+       mapping = aes(x = age , y = y_hat2 , group=as.factor(sex) , color=as.factor(sex))) +
+  geom_point()+scale_color_manual(values = c("blue", "red"))+geom_smooth(method = "nl", se = FALSE) 
 
 stargazer(modelonocond,modelcondic,modelo_bootstrap, type="text", digits=4)
+
+stargazer(modelonocond,modelcondic,modelo_bootstrap, type="Latex", digits=4)
 
 ################ Punto No. 5 - Predicting earnings #####################
 

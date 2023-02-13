@@ -276,20 +276,22 @@ histo_final_df
 
 # 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
 
-reg_df <- lm(logingtot~sex, df)
+modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
+                  data = df)
+summary(modelonocond)
 
-stargazer(reg_df, type="text", digits=7)
+stargazer(modelonocond, type="text", digits=7)
 
 # 3- Salaior igualitario para trabajos iguales: 
 ## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
-df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel")])
+df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel", "oficio")])
 df_anes$age_cuadrado <- df_anes$age^2
 View(df_anes)
 
 modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
                   data = df_anes)
-summary(modelonocond)
+
 
 ####Modelo condicionado
 
@@ -341,7 +343,7 @@ for (i in 1:1000) {
 ## añadir Agregamos una columna con los predictores para el caso yhat_reg
 
 ##Agregamos una columna con los predictores
-df$salario_sex = predict(reg_df)
+df$salario_age = predict(reg_df)
 
 summ = df %>%  
   group_by(

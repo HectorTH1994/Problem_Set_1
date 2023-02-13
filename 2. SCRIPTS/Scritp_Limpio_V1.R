@@ -341,7 +341,7 @@ for (i in 1:1000) {
 ## añadir Agregamos una columna con los predictores para el caso yhat_reg
 
 ##Agregamos una columna con los predictores
-df_anes$salario_sex = predict(df)
+df$salario_sex = predict(reg_df)
 
 summ = df %>%  
   group_by(
@@ -349,7 +349,7 @@ summ = df %>%
   ) %>%  
   summarize(
     mean_y = mean(log(y_ingLab_m_ha)),
-    yhat_reg = mean(salario_hat_sexx), .groups="drop"
+    yhat_reg = mean(salario_sex), .groups="drop"
   ) 
 
 ggplot(summ) + 

@@ -335,13 +335,22 @@ for (i in 1:1000) {
 }
 
 #calculamos la edad pico 
-ggplot(df, aes(x=y_ingLab_m_ha, y=age, shape=factor(sex), color=factor(sex))) + 
-  geom_point() 
-  geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + 
-  theme_minimal() + 
-  theme(legend.position="bottom")
-  
-  
+p_load(numDeriv)
+
+# Supongamos que tenemos un data frame llamado "datos" con dos columnas: "edad" y "salario"
+
+# analizamos el comportamiento de las variables 
+
+modelo_salario_edad <- lm(y_ingLab_m_ha ~ age + I(age^2), data = df)
+
+obj_func <- function(age){
+  -predict(modelo_salario_edad, newdata = data.frame(age = age))
+}
+
+sol <- optimize(obj_func, interval = c(18, 86))
+
+edad_pico <- sol$minimum
+edad_pico
 
 ## Grafica de predictores edad - salario
 ##Agregamos una columna con los predictores

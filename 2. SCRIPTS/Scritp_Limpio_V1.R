@@ -352,6 +352,21 @@ sol <- optimize(obj_func, interval = c(18, 86))
 edad_pico <- sol$minimum
 edad_pico
 
+# en el caso masculino
+modelo_hombres <- lm(data = df[df$sex == "1",], y_ingLab_m_ha ~ age + I(age^2))
+
+pred_func_hombres <- predict(modelo_hombres)
+edad_pico_hombres <- with(df[df$sex == "0",], age[which.max(pred_func_hombres)])
+
+edad_pico_hombres
+
+# en el caso femenino 
+modelo_mujeres <- lm(data = df[df$sex == "0",], y_ingLab_m_ha ~ age + I(age^2))
+
+pred_func_mujeres <- predict(modelo_mujeres)
+edad_pico_mujeres <- with(df[df$sex == "0",], age[which.max(pred_func_mujeres)])
+edad_pico_mujeres
+
 ## Grafica de predictores edad - salario
 ##Agregamos una columna con los predictores
 

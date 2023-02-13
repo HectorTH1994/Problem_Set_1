@@ -368,12 +368,12 @@ edad_pico_mujeres <- with(df[df$sex == "0",], age[which.max(pred_func_mujeres)])
 edad_pico_mujeres
 
 ## Grafica de predictores edad - salario
+
 ##Agregamos una columna con los predictores
 
+df_anes$salario_edad = predict(modelcondic)
 
-df_anes$salario_edad = predict(modelcondic )
-
-summ = df %>%  
+summ = df_anes %>%  
   group_by(
    sex 
   ) %>%  
@@ -400,6 +400,7 @@ ggplot(summ) +
   scale_y_continuous(limits = c(7, 10))
 
 
+stargazer(modelonocond,modelcondic,modelo_bootstrap, type="text", digits=4)
 
 ################ Punto No. 5 - Predicting earnings #####################
 

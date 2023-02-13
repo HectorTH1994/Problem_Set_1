@@ -271,7 +271,7 @@ df <- df %>% mutate(logingtot=log(y_ingLab_m_ha))
 
 g_df<- ggplot(data=df) + 
   geom_histogram(mapping = aes(x=logingtot , group=as.factor(sex) , fill=as.factor(sex)))
-histo_final_df <-g_df + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("0"="Hombre" , "1"="Mujer") , name = "Sexo")
+histo_final_df <-g_df + scale_fill_manual(values = c("0"="orange" , "1"="red") , label = c("1"="Hombre" , "0"="Mujer") , name = "Sexo")
 histo_final_df
 
 # 2 - Se realiza la regresión inicial en relación con las brechas por el salario y el género: 
@@ -282,29 +282,26 @@ summary(modelonocond)
 
 stargazer(modelonocond, type="text", digits=7)
 
-# 3- Salaior igualitario para trabajos iguales: 
-## Se realizar el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
+# 3- Salaio igualitario para trabajos iguales: 
+## Se realiza el control utilizando el proceso Frish-Waugh-Lovell, (en adelante "FLW")
 
-df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel", "oficio")])
+df_anes <- na.omit(df[c("y_ingLab_m_ha","age", "sex", "maxEducLevel", "oficio", "estrato1")])
 df_anes$age_cuadrado <- df_anes$age^2
 View(df_anes)
-
-modelonocond = lm(log(y_ingLab_m_ha) ~ sex, 
-                  data = df_anes)
 
 
 ####Modelo condicionado
 
 ###Obteniendo residuos
 
-modelcondic = lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, 
+modelcondic = lm(log(y_ingLab_m_ha) ~ ., 
                  data = df_anes)
 summary(modelcondic)
 
-resid1 = residuals(lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado, 
+resid1 = residuals(lm(log(y_ingLab_m_ha) ~ ., 
                       data = df_anes))
 
-####Regresion de residuos con máximo nivel de escolaridad alcanzado
+####Regresion de residuos 
 
 resid2= residuals(lm(maxEducLevel ~ sex+age+age_cuadrado, 
                      data = df_anes))
@@ -326,9 +323,9 @@ for (i in 1:1000) {
   muestra_d = df_anes[sample(1:nrow(df_anes), nrow(df_anes), replace = TRUE), ]
   
   #Estimación
-  modelo_bootstrap <- lm(log(y_ingLab_m_ha) ~ sex+age+age_cuadrado+maxEducLevel, data = muestra_d)
+  modelo_bootstrap <- lm(log(y_ingLab_m_ha) ~ ., data = muestra_d)
   
-  #Guardando coeficiente tes
+  #Guardando coeficiente test
   muestra_intercepto <-
     c(muestra_intercepto, modelo_bootstrap$coefficients[1])
   
@@ -337,13 +334,20 @@ for (i in 1:1000) {
   
 }
 
-##Grafica modelo no condicionado
-#gourpby van los predictores 
-#mean_y = variable y
-## añadir Agregamos una columna con los predictores para el caso yhat_reg
+#calculamos la edad pico 
+ggplot(df, aes(x=y_ingLab_m_ha, y=age, shape=factor(sex), color=factor(sex))) + 
+  geom_point() 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE) + 
+  theme_minimal() + 
+  theme(legend.position="bottom")
+  
+  
 
+## Grafica de predictores edad - salario
 ##Agregamos una columna con los predictores
-df$salario_age = predict(reg_df)
+
+
+df_anes$salario_edad = predict(modelcondic )
 
 summ = df %>%  
   group_by(
@@ -351,7 +355,7 @@ summ = df %>%
   ) %>%  
   summarize(
     mean_y = mean(log(y_ingLab_m_ha)),
-    yhat_reg = mean(salario_sex), .groups="drop"
+    yhat_reg = mean(salario_edad), .groups="drop"
   ) 
 
 ggplot(summ) + 
@@ -370,6 +374,8 @@ ggplot(summ) +
   ) +
   theme_bw()+ 
   scale_y_continuous(limits = c(7, 10))
+
+
 
 ################ Punto No. 5 - Predicting earnings #####################
 

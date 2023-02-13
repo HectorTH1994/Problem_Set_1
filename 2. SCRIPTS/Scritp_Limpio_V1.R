@@ -176,10 +176,77 @@ fit_sin_atipicos_p3<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df_anes
 fit_con_atipicos_log<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
 stargazer(fit_sin_atipicos_p3,fit_con_atipicos_log, type="text")
 
+#########BOOTSTRAP#################
+#####funciona por fin##############
+###################################
+
+boot_prediccion <- function(df, indices) {
+  modelo_boot <- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df[indices, ])
+  return(predict(modelo_boot, newdata = df))
+}
+
+set.seed(112)
+resultados_boot <- boot(df, boot_prediccion, R = 100)
+
+# Calcula los intervalos de confianza
+lower_bound <- apply(exp(resultados_boot$t), 2, quantile, probs = 0.05)
+upper_bound <- apply(exp(resultados_boot$t), 2, quantile, probs = 0.95)
+
+
+# Genera un data frame con los valores predictores y sus predicciones, junto con los límites inferiores y superiores para los intervalos de confianza
+predicciones_anes <- data.frame(age= df$age,
+                           age_cuadrado=df$age_cuadrado,
+                           y_pred = exp(resultados_boot$t[1, ]),
+                           lower = lower_bound,
+                           upper = upper_bound)
+
+# Grafica las predicciones y los intervalos de confianza
+grafica_2 <- ggplot(predicciones_anes, aes(age, y_pred)) +
+  geom_point() +
+  geom_line(aes(age, y_pred)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2)
+
+  
+
+summ = df %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(y_ingLab_m_ha), .groups="drop"
+  ) 
+
+
+ggplot() +
+  geom_line(aes(x = age, y = y_pred), data = predicciones_anes)+
+  geom_ribbon(aes(x=age, ymin = lower, ymax = upper), alpha = 0.2, data = predicciones_anes)+
+  geom_point(aes(x = age, y = mean_y), data = summ, color = "blue", size = 2) + 
+  labs(
+    title = "Salarios usando como predictor la edad Y BOOTSTRAP",
+    x = "Edad",
+    y = "Salario por hora"
+  )+
+  scale_y_continuous(limits = c(0, 15000))
+
+
+########Buscamos el valor maximo########
+X <- seq(from = 1, to = 150, by = 1)
+predicciones <- predict(fit_con_atipicos_log, newdata=data.frame(age=X, age_cuadrado=X^2))
+valor_maximo <- exp(max(predicciones))
+valor_maximo
+predicciones_maxima <- predict(fit_con_atipicos_log, newdata=data.frame(age=X, age_cuadrado=X^2))
+predicciones_maxima
+
+prediction_max <- exp(predict(fit_con_atipicos_log, newdata = data.frame(age=45, age_cuadrado=45^2), interval = "confidence"))
+stargazer(prediction_max, type="text")
+
 ##Agregamos una columna con los predictores
 df_anes$salario_hat = predict(fit_sin_atipicos_p3)
 df$salario_hat_age = predict(fit_con_atipicos_log)
 
+
+
+################gRAFICA DE PERFILES SIN BOOSTRAP########
 
 
 # plot predicted values
@@ -208,6 +275,8 @@ ggplot(summ) +
   ) +
   theme_bw()
 
+####################GRAFICA 2#######################
+
 
 summ = df %>%  
   group_by(
@@ -235,29 +304,6 @@ ggplot(summ) +
   theme_bw()+ 
   scale_y_continuous(limits = c(7, 10))
 
-###############################################################
-#################BOOTSTRAP#####################################
-###############################################################
-# Define la funci?n que se usar? para el bootstrap
-boot_prediccion <- function(df_anes, indices) {
-  modelo_boot <- lm(y_ingLab_m_ha ~ ., data = df_anes[indices,])
-  prediccion <- predict(modelo_boot, newdata = tibble(x = 86))[1]
-  return(prediccion)
-}
-
-# Realiza el bootstrap
-resultados_boot <- boot(df_anes, boot_prediccion, R = 100000)
-
-# Calcula los percentiles para construir el intervalo de confianza
-alpha <- 0.05
-limite_inferior <- quantile(resultados_boot$t, probs = alpha / 2)
-limite_superior <- quantile(resultados_boot$t, probs = 1 - alpha / 2)
-
-# Muestra el intervalo de confianza
-cat("El intervalo de confianza al", 100 * (1 - alpha), "% para X = 1.5 es: [", limite_inferior, ",", limite_superior, "]")
-
-#########################################################################
-DSADSA
 
 
 ################ Punto No. 4 - Gender earnings gap #####################

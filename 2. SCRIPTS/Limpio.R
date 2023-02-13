@@ -176,9 +176,75 @@ fit_sin_atipicos_p3<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df_anes
 fit_con_atipicos_log<- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df, x = TRUE)
 stargazer(fit_sin_atipicos_p3,fit_con_atipicos_log, type="text")
 
+#########BOOTSTRAP#################
+#####funciona por fin##############
+###################################
+
+boot_prediccion <- function(df, indices) {
+  modelo_boot <- lm(log(y_ingLab_m_ha) ~ age + age_cuadrado, data = df[indices, ])
+  return(predict(modelo_boot, newdata = df))
+}
+
+set.seed(112)
+resultados_boot <- boot(df, boot_prediccion, R = 100)
+
+# Calcula los intervalos de confianza
+lower_bound <- apply(exp(resultados_boot$t), 2, quantile, probs = 0.05)
+upper_bound <- apply(exp(resultados_boot$t), 2, quantile, probs = 0.95)
+
+
+# Genera un data frame con los valores predictores y sus predicciones, junto con los límites inferiores y superiores para los intervalos de confianza
+predicciones_anes <- data.frame(age= df$age,
+                           age_cuadrado=df$age_cuadrado,
+                           y_pred = exp(resultados_boot$t[1, ]),
+                           lower = lower_bound,
+                           upper = upper_bound)
+
+# Grafica las predicciones y los intervalos de confianza
+grafica_2 <- ggplot(predicciones_anes, aes(age, y_pred)) +
+  geom_point() +
+  geom_line(aes(age, y_pred)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2)
+
+  
+
+summ = df %>%  
+  group_by(
+    age, age_cuadrado
+  ) %>%  
+  summarize(
+    mean_y = mean(y_ingLab_m_ha), .groups="drop"
+  ) 
+
+
+ggplot() +
+  geom_line(aes(x = age, y = y_pred), data = predicciones_anes)+
+  geom_ribbon(aes(x=age, ymin = lower, ymax = upper), alpha = 0.2, data = predicciones_anes)+
+  geom_point(aes(x = age, y = mean_y), data = summ, color = "blue", size = 2) + 
+  labs(
+    title = "Salarios usando como predictor la edad y con atipicos",
+    x = "Edad",
+    y = "Salario por hora"
+  )+
+  scale_y_continuous(limits = c(0, 15000))
+
+
+########Buscamos el valor maximo########
+X <- seq(from = 1, to = 150, by = 1)
+predicciones <- predict(fit_con_atipicos_log, newdata=data.frame(age=X, age_cuadrado=X^2))
+valor_maximo <- max(predicciones)
+predicciones_maxima <- predict(fit_con_atipicos_log, newdata=data.frame(age=X, age_cuadrado=X^2))
+
+prediction_max <- exp(predict(fit_con_atipicos_log, newdata = data.frame(age=45, age_cuadrado=45^2), interval = "confidence"))
+
+
 ##Agregamos una columna con los predictores
 df_anes$salario_hat = predict(fit_sin_atipicos_p3)
 df$salario_hat_age = predict(fit_con_atipicos_log)
+
+
+
+#################PRUEBA########
 
 
 
@@ -208,6 +274,11 @@ ggplot(summ) +
   ) +
   theme_bw()
 
+##########################################################################
+
+
+
+#########################################################################
 
 summ = df %>%  
   group_by(
@@ -239,18 +310,17 @@ ggplot(summ) +
 #################BOOTSTRAP#####################################
 ###############################################################
 
-# Define la función del bootstrap, la edad mayor es 86 años
-boot_prediccion <- function(df_anes, indices) {
-  modelo_boot <- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df_anes[indices,])
-  prediccion <- predict(modelo_boot, newdata = tibble(age = 86, age_cuadrado=86**2))[1]
-  return(prediccion)
+########### Define la función del bootstrap, la edad mayor es 86 años ############
+boot_prediccion <- function(df, indices) {
+  modelo_boot <- lm(y_ingLab_m_ha ~ age + age_cuadrado, data = df[indices,])
+  return(predict(modelo_boot, newdata = df, se.fit = TRUE))
 }
 
 # Realiza el bootstrap
 set.seed(112)
 resultados_boot <- boot(df_anes, boot_prediccion, R = 20000)
 
-# Calcula los percentiles para construir el intervalo de confianza
+##### Calcula los percentiles para construir el intervalo de confianza #####
 alpha <- 0.05
 limite_inferior <- quantile(resultados_boot$t, probs = alpha / 2)
 limite_superior <- quantile(resultados_boot$t, probs = 1 - alpha / 2)
@@ -370,7 +440,7 @@ y_hat_out1_sexo_com <- predict(mod_sexo_completo, newdata = X_test)
 
 
 
-
+`
 
 # Métricas dentro y fuera completo
 r2_in1_com <- R2_Score(y_pred = exp(y_hat_in1_com), y_true = y_train$salario)
@@ -472,4 +542,4 @@ cv_error_sexo_com$delta[1]
 
 mod_completo <- lm(log(salario) ~ ., df_5)
 cv_error_completo <- cv.glm(data = df_5, glmfit =  mod_completo)
-cv_error_completo$delta[1]
+cv_error_completo$delta[1]`
